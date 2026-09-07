@@ -132,6 +132,19 @@ function playId(id) {
     return true;
 }
 
+function toggleTrack(id) {
+    if (audio && id === currentId) {
+        if (audio.paused) {
+            audio.play().catch(err => log('play blocked:', err && err.message));
+        } else {
+            audio.pause();
+        }
+        renderPlaylist();
+        return;
+    }
+    playId(id);
+}
+
 function playCurrent() {
     if (currentId && trackCache.has(currentId)) {
         const a = ensureAudio();
@@ -326,7 +339,7 @@ function wireUI(root) {
             if (!btn) return;
             const id = btn.getAttribute('data-sm-id');
             const action = btn.getAttribute('data-sm-action');
-            if (action === 'play') playId(id);
+            if (action === 'play') toggleTrack(id);
             else if (action === 'remove') removeTrack(id);
             else if (action === 'up') moveTrack(id, -1);
             else if (action === 'down') moveTrack(id, 1);
@@ -349,8 +362,7 @@ function renderPlaylist() {
                     <div style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">
                         <span class="muted" style="min-width: 1.4em;">${i + 1}.</span>
                         <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;${active ? ' font-weight: bold;' : ''}">${esc(t.name)}</span>
-                        <span class="muted">${active ? '▶' : (pausedHere ? '⏸' : '')}</span>
-                        <button class="menu_button" data-sm-action="play" data-sm-id="${esc(id)}" title="Play" style="padding: 0 6px;">▶</button>
+                        <button class="menu_button" data-sm-action="play" data-sm-id="${esc(id)}" title="${active ? 'Pause' : (pausedHere ? 'Resume' : 'Play')}" style="padding: 0 6px;">${active ? '⏸' : (pausedHere ? '▶' : '▶')}</button>
                         <button class="menu_button" data-sm-action="up" data-sm-id="${esc(id)}" title="Move up" style="padding: 0 6px;">↑</button>
                         <button class="menu_button" data-sm-action="down" data-sm-id="${esc(id)}" title="Move down" style="padding: 0 6px;">↓</button>
                         <button class="menu_button" data-sm-action="remove" data-sm-id="${esc(id)}" title="Remove" style="padding: 0 6px;">✕</button>
@@ -440,6 +452,7 @@ jQuery(async () => {
 window.__sm = {
     addFiles,
     playId,
+    toggleTrack,
     nextTrack,
     prevTrack,
     removeTrack,
