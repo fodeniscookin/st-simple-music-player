@@ -263,15 +263,37 @@ function prevTrack() {
 
 // ---------- Track management ----------
 
+const AUDIO_EXT_RE = /\.(mp3|wav|ogg|oga|m4a|flac|aac|opus|webm|mp4)$/i;
+
+function mimeFromName(name) {
+    const m = String(name || '').toLowerCase().match(/\.[a-z0-9]+$/);
+    if (!m) return '';
+    return ({
+        '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.oga': 'audio/ogg',
+        '.m4a': 'audio/mp4', '.mp4': 'audio/mp4', '.flac': 'audio/flac',
+        '.aac': 'audio/aac', '.opus': 'audio/ogg', '.webm': 'audio/webm',
+    })[m[0]] || '';
+}
+
 async function addFiles(fileList) {
     const added = [];
     for (const file of fileList) {
-        if (!file || (file.type && !file.type.startsWith('audio/'))) {
-            log('skipped non-audio file:', file && file.name);
+        if (!file) continue;
+        // Accept anything that declares as audio OR has an audio extension.
+        // Downloaders often hand files over with no/generic MIME type
+        // (application/octet-stream) — the extension is the real signal.
+        const declaredAudio = !!(file.type && file.type.startsWith('audio/'));
+        const extAudio = AUDIO_EXT_RE.test(file.name || '');
+        if (!declaredAudio && !extAudio) {
+            log('skipped non-audio file:', file.name);
             continue;
         }
+        const type = declaredAudio ? file.type : (mimeFromName(file.name) || 'audio/mpeg');
+        const blob = (typeof File !== 'undefined' && file instanceof File)
+            ? new File([file], file.name, { type })
+            : new Blob([file], { type });
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        const track = { id, name: file.name, type: file.type || 'audio', blob: file };
+        const track = { id, name: file.name, type, blob };
         await dbOp('readwrite', st => st.put(track));
         trackCache.set(id, track);
         settings().order.push(id);
